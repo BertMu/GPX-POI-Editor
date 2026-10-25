@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPX POI Editor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css">
+
+<link rel="stylesheet" href="gpx-map.css">
+</head>
+<body>
+
+<aside id="editor">
+  <h2>Edit point <button id="edClose" type="button" title="Close editmode">×</button></h2>
+  <div class="ed-bar">
+    <select id="edTarget" title="Add new points to this file"></select>
+    <button id="edAdd" type="button">➕ New point</button>
+  </div>
+  <p id="edHint">Click on a point on the map to edit it.</p>
+  <div id="edForm" hidden>
+    <div id="edFields"></div>
+    <div class="ed-btns">
+      <button id="edSave" type="button" class="primary">Save</button>
+      <button id="edGeo" type="button">🏷️ Address from coordinates</button>
+      <button id="edMove" type="button">📍 Move on the map</button>
+      <button id="edDel" type="button" class="danger">Delete</button>
+    </div>
+  </div>
+  <div id="edMsg" role="status"></div>
+</aside>
+
+<div id="map"></div>
+<div id="overlay">Drop the GPX file here to load it</div>
+
+<!-- ---------- Control panel ---------- -->
+<div id="panel">
+  <h1>GPX-files</h1>
+  <button id="pick">Choose file…</button>
+  <input type="file" id="fileInput" accept=".gpx" multiple hidden>
+  <div style="margin-top:6px;color:#6b7785;font-size:12px">or drag and drop a .gpx file on the map</div>
+  <label><input type="checkbox" id="persist"> Remember in this browser</label>
+  <ul id="list"></ul>
+  <button id="export" style="margin-top:10px" hidden>Export as 1 GPX</button>
+  <button id="clear" style="margin-top:10px" hidden>Clear all</button>
+  <div id="msg" role="status"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
+<script src="gpx-map.js"></script>
+</body>
+</html>
