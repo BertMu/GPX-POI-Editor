@@ -1,3 +1,26 @@
+/* MIT License
+
+Copyright (c) 2026 Bert Muijtstege
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 /* ---------- Kaart ---------- */
 var map = L.map('map', {
   center: [46.8, 11.5],
@@ -7,6 +30,12 @@ var map = L.map('map', {
 });
 
 /* ---------- Tile-lagen ---------- */
+var outdoors = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+});
+
+
 var cycle = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
   maxZoom: 19,
   attribution: '&copy; <<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases" title="CyclOSM - Open Bicycle render">CyclOSM</a> | Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -57,6 +86,7 @@ var topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
 
   // Basiskaarten: er kan steeds maar één tegelijk actief zijn.
 var baseMaps = {
+  "OpenStreetMap": outdoors,
   "CycleOSM": cycle,
   "Humanitarian (HOT)": hot,
   "TopPlusOpen Color": TopPlusOpen_Color,
@@ -70,11 +100,12 @@ var baseMaps = {
       "Waymarked Trails - fietsen": cyclingTrails
     };
 
-cycle.addTo(map);   // standaardlaag
+outdoors.addTo(map);   // standaardlaag
 L.control.layers(baseMaps, overlayMaps, {
   position: 'topleft',
   collapsed: true
 }).addTo(map);
+
 
 /* ---------- GPX-logica ---------- */
 const COLORS = ['#d93025', '#1a73e8', '#188038', '#e37400', '#9334e6', '#00838f'];
@@ -342,7 +373,7 @@ function handleFiles(fileList) {
     const r = new FileReader();
     r.onerror = () => { msg('Could not read "' + file.name + '".'); };
     r.onload = () => {
-      try { addFile(file.name, decodeXml(r.result)); }
+      try { addFile(file.name, formatOf(file.name).binary ? r.result : decodeXml(r.result)); }
       catch (e) { msg(file.name + ': ' + e.message); }
       if (--pending === 0) { renderList(); fitAll(); save(); }
     };

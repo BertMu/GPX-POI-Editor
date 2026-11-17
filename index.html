@@ -1,5 +1,32 @@
+<!
+MIT License
+
+Copyright (c) 2026 Bert Muijtstege
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+
+
+
+
 <!DOCTYPE html>
-<html lang="EN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,7 +45,7 @@
     <select id="edTarget" title="Nieuwe punten toevoegen aan dit bestand"></select>
     <button id="edAdd" type="button">➕ New POI</button>
   </div>
-  <p id="edHint">Click on a POI on the map to edit it.</p>
+  <p id="edHint">Click on a point on the map to edit i.</p>
   <div id="edForm" hidden>
     <div id="edFields"></div>
     <div class="ed-btns">
@@ -32,14 +59,14 @@
 </aside>
 
 <div id="map"></div>
-<div id="overlay">Drop the GPX/KML file here to load it</div>
+<div id="overlay">Drop the GPX file to load it</div>
 
 <!-- ---------- Control panel ---------- -->
 <div id="panel">
-  <h1>GPX/KML-files</h1>
+  <h1>GPX- KML and GPI-files</h1>
   <button id="pick">Choose file…</button>
   <input type="file" id="fileInput" accept=".gpx" multiple hidden>
-  <div style="margin-top:6px;color:#6b7785;font-size:12px">or drag a file on the map to load it</div>
+  <div style="margin-top:6px;color:#6b7785;font-size:12px">or drag the file on the mao</div>
   <label><input type="checkbox" id="persist"> Remember in this browser</label>
   <ul id="list"></ul>
   <button id="export" style="margin-top:10px" hidden>Export as 1 GPX</button>
@@ -50,6 +77,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.min.js"></script>
 <script src="gpx-map.js"></script>
+<script src="gpi.js"></script>
 <script src="kml-import.js"></script>
 <script src="poi-core.js"></script>
 <script src="poi-search.js"></script>
