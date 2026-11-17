@@ -109,7 +109,7 @@ While edit mode is on, clicking a pin does not open a popup but selects the poin
 | Street1 / Street2 | Street and house number (and optionally a second line) |
 | Postalcode, City, Country | Postal code, city, country |
 | Phone, Email | Contact details |
-| Kleur van de pin (Pin colour) | A colour of its own for this point, or "(kleur van het bestand)" (colour of the file) |
+| Pin colour | A colour of its own for this point, or "colour of the file" |
 
 Changes are only applied when you click **Save**. Latitude must be between -90 and 90 and Longitude between -180 and 180, otherwise an error message appears.
 
