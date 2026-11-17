@@ -1,0 +1,84 @@
+  html, body { height: 100%; margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; }
+  body { display: flex; }
+#map { flex: 1; min-width: 0; height: 100%; }
+
+  #panel {
+    position: absolute; top: 10px; right: 10px; z-index: 1000;
+    width: 260px; max-height: calc(100% - 20px); overflow-y: auto;
+    background: #fff; border-radius: 6px; padding: 12px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.35);
+  }
+  #panel h1 { font-size: 15px; margin: 0 0 8px; }
+  #panel button {
+    font: inherit; padding: 6px 10px; border: 1px solid #b8c0c8; background: #f6f8fa;
+    border-radius: 4px; cursor: pointer;
+  }
+  #panel button:hover { background: #eaeef2; }
+  #panel label { display: block; margin: 10px 0 0; cursor: pointer; }
+  #msg { margin-top: 8px; color: #b3261e; min-height: 1em; }
+  #list { list-style: none; margin: 10px 0 0; padding: 0; }
+  #list li {
+    display: flex; align-items: center; gap: 6px; padding: 5px 0;
+    border-top: 1px solid #e3e7eb;
+  }
+  #list .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #list .ct { color: #6b7785; font-size: 12px; }
+  #list .rm { padding: 1px 7px; line-height: 1.2; }
+
+  #overlay {
+    position: absolute; inset: 0; z-index: 2000; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(26,115,232,.18); border: 4px dashed #1a73e8;
+    font-size: 22px; color: #0b57d0; pointer-events: none;
+  }
+  #overlay.on { display: flex; }
+  .leaflet-popup-content b { display: block; margin-bottom: 3px; }
+  .leaflet-popup-content small { color: #555; }
+
+
+/* ---------- Bewerken ---------- */
+.edit-toggle {
+  font: inherit; padding: 6px 10px; border: none; background: #fff; color: #222;
+  cursor: pointer; display: block;
+}
+.edit-toggle:hover { background: #f4f4f4; }
+.edit-toggle.on { background: #1a73e8; color: #fff; }
+
+#editor {
+  display: none; flex: none; width: 300px; height: 100%; overflow-y: auto;
+  box-sizing: border-box; padding: 12px; background: #fff;
+  border-right: 1px solid #cfd6dd; z-index: 1100;
+}
+body.editing #editor { display: block; }
+#editor h2 { font-size: 15px; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; }
+#editor button {
+  font: inherit; padding: 6px 10px; border: 1px solid #b8c0c8; background: #f6f8fa;
+  border-radius: 4px; cursor: pointer;
+}
+#editor button:hover { background: #eaeef2; }
+#editor .primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+#editor .primary:hover { background: #1765cc; }
+#editor .danger { color: #b3261e; }
+#edClose { padding: 0 8px; line-height: 1.4; }
+.ed-bar { display: flex; gap: 6px; margin-bottom: 10px; }
+.ed-bar select { flex: 1; min-width: 0; font: inherit; padding: 5px; }
+#edHint { color: #6b7785; margin: 0; }
+#editor label { display: block; margin-top: 8px; font-size: 12px; color: #5f6b76; }
+#editor input, #editor textarea, #editor select {
+  display: block; width: 100%; box-sizing: border-box; margin-top: 2px; padding: 5px 7px;
+  font: inherit; color: #000; border: 1px solid #b8c0c8; border-radius: 4px;
+}
+.ed-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+#edMsg { margin-top: 10px; min-height: 1em; color: #188038; }
+#edMsg.err { color: #b3261e; }
+
+#map.picking, #map.picking .leaflet-interactive { cursor: crosshair !important; }
+
+
+/* ---------- Legenda ---------- */
+.sym-legend {
+  background: rgba(255,255,255,.92); padding: 8px 10px; border-radius: 5px;
+  box-shadow: 0 1px 5px rgba(0,0,0,.4); line-height: 1.7; font-size: 13px;
+}
+.sym-legend b { display: block; margin-bottom: 2px; }
+.sym-legend i { width: 18px; text-align: center; color: #444; }
