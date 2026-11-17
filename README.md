@@ -1,31 +1,32 @@
-# GPX on the map
+# GPX POI Editor
 
 A simple web page (Leaflet) for viewing, editing and exporting GPX files. You load one or more GPX files, see the waypoints, tracks and routes on the map, edit points in a sidebar, and export everything as one new GPX file.
 
-Everything runs locally in your browser. No server is needed and your files are not sent anywhere (except for the optional address lookup, see [Address from coordinates](#address-from-coordinates)).
-
-> **Note:** the page's interface is in Dutch. Button and label names are shown below exactly as they appear on screen, with the English meaning in parentheses where it helps.
+Everything runs locally in your browser. No server is needed and your files are not sent anywhere (except for the optional address lookup, see [Address from coordinates](#address-from-coordinates)), and getting the POI from the Overpass API.
 
 ## Files
 
 | File | Contents |
 |---|---|
-| `gpx_leaflet_map.html` | The page itself: structure, panel and sidebar |
+| `index.html` | The page itself: structure, panel and sidebar |
 | `gpx-map.css` | All styling |
 | `gpx-map.js` | All logic: map, loading, editing, exporting |
+| 'kml-import.js'| All logic: importing KML files |
+| 'poi-core.js'| Core file for POI handeling |
+| 'poi-search " | Poi searchin logic |
 
-Put the three files in the same folder and open `gpx_leaflet_map.html` in your browser. Double-clicking (`file://`) works.
+Put the  files in the same folder and open `index.html` in your browser. Double-clicking (`file://`) works.
 
 **An internet connection is required** for Leaflet, Font Awesome, the Awesome Markers plugin and the map tiles. They are loaded from external servers.
 
 ## Quick start
 
 1. Open `gpx_leaflet_map.html`.
-2. Click **Bestand kiezen…** (Choose file…) or drag one or more `.gpx` files onto the map.
+2. Click **Choose file…** or drag one or morefiles o nto the map.
 3. The map zooms to your data.
-4. Click **✏️ Bewerken** (Edit) to change points, or **Exporteer als 1 GPX** (Export as 1 GPX) to save everything.
+4. Click **✏️ Edit** to change points, or **Export as 1 GPX** to save everything.
 
-## Loading GPX files
+## Loading GPX -KML or GPI files
 
 - You can select or drag several files at once. Each file gets its own colour (the first six colours repeat in turn).
 - **Waypoints** (`<wpt>`), **tracks** (`<trk>`/`<trkseg>`) and **routes** (`<rte>`) are supported.
@@ -37,24 +38,30 @@ Put the three files in the same folder and open `gpx_leaflet_map.html` in your b
 
 | Element | What it does |
 |---|---|
-| **Bestand kiezen…** | Opens the file picker (multiple files allowed) |
-| **Onthoud in deze browser** (Remember in this browser) | Stores the loaded data in the browser, see [Browser storage](#browser-storage) |
+| **Choose file** | Opens the file picker (multiple files allowed) |
+| **Remember in this browser** (Remember in this browser) | Stores the loaded data in the browser, see [Browser storage](#browser-storage) |
 | **File list** | Per file: colour, name, number of points and lines. Click the name to zoom to that file. Click **×** to remove the file from the map |
-| **Exporteer als 1 GPX** | Merges everything and downloads it, see [Exporting](#exporting) |
-| **Alles wissen** (Clear all) | Removes all files from the map |
+| **Export als 1 GPX** | Merges everything and downloads it, see [Exporting](#exporting) |
+| **Export as GPI** | Downloads the POI as a Garmin GPI file
+| **Clear all** | Removes all files from the map |
 
-The **Exporteer als 1 GPX** and **Alles wissen** buttons only appear once at least one file is loaded.
+The **Export al 1 GPX**, **Export as GPI** and **clear all** buttons only appear once at least one file is loaded.
 
 ## Map layers
 
 At the top left there is a layers button (below the zoom buttons). Use it to choose the background map:
 
 - **Outdoors (OSM)**: default layer
+- **CycleOSM**: handy for cycling and mountain routes
 - **Humanitarian (HOT)**
 - **TopPlusOpen Color**
-- **Topografisch (OpenTopoMap)**: handy for cycling and mountain routes
+- **Topografisch (OpenTopoMap)**
 - **Satellite** (Esri)
-- **Carto Light**
+
+Two overlay maps Waymarked Trails can be used with the basemaps
+
+- **Waymarked Trails - Hiking**
+- **Waymarked Trails - Cycling**
 
 To add a layer, create an `L.tileLayer(...)` in `gpx-map.js` under `/* ---------- Tile-lagen ---------- */` and include it in `baseMaps`.
 
@@ -86,7 +93,7 @@ Case does not matter (`hotel` works too).
 
 ## Edit mode
 
-Click **✏️ Bewerken** at the top left. The button turns blue and a sidebar slides open on the left. Click the button again (or the **×** in the sidebar) to close edit mode.
+Click **✏️ Edit** at the top left. The button turns blue and a sidebar slides open on the left. Click the button again (or the **×** in the sidebar) to close edit mode.
 
 While edit mode is on, clicking a pin does not open a popup but selects the point. The selected point gets a yellow ring around the tip of the pin.
 
@@ -104,22 +111,22 @@ While edit mode is on, clicking a pin does not open a popup but selects the poin
 | Phone, Email | Contact details |
 | Kleur van de pin (Pin colour) | A colour of its own for this point, or "(kleur van het bestand)" (colour of the file) |
 
-Changes are only applied when you click **Opslaan** (Save). Latitude must be between -90 and 90 and Longitude between -180 and 180, otherwise an error message appears.
+Changes are only applied when you click **Save**. Latitude must be between -90 and 90 and Longitude between -180 and 180, otherwise an error message appears.
 
 ### Sidebar buttons
 
 | Button | What it does |
 |---|---|
-| **➕ Nieuw punt** (New point) | Then click on the map to place a point. Choose the file in the dropdown next to it. If no file is loaded yet, a new file is created |
-| **Opslaan** | Applies the fields to the point |
-| **🏷️ Adres uit coördinaten** (Address from coordinates) | Fills in the address automatically, see below |
-| **📍 Verplaats op kaart** (Move on map) | Then click on the map for the new position |
-| **Verwijderen** (Delete) | Deletes the point (with confirmation) |
+| **➕ New POI** | Then click on the map to place a point. Choose the file in the dropdown next to it. If no file is loaded yet, a new file is created |
+| **Save** | Applies the fields to the point |
+| **🏷️ Address from coordinates** | Fills in the address automatically, see below |
+| **📍 Move on the map** | Then click on the map for the new position |
+| **Delete** | Deletes the point (with confirmation) |
 | **Esc** (key) | Cancels "New point" or "Move" |
 
 ### Address from coordinates
 
-The **🏷️ Adres uit coördinaten** button reads Latitude and Longitude from the sidebar and looks up the address through **Nominatim** (OpenStreetMap):
+The **🏷️ Address from coordinates** button reads Latitude and Longitude from the sidebar and looks up the address through **Nominatim** (OpenStreetMap):
 
 - Street1 becomes street plus house number, for example `Via Templari 51`.
 - Street2 is cleared.
@@ -137,7 +144,7 @@ Please note:
 
 ## Exporting
 
-The **Exporteer als 1 GPX** button merges all loaded files into one file named `samengevoegd_DDMMYYYY.gpx` (with today's date; *samengevoegd* means merged).
+The **Export al 1 GPX** button merges all loaded files into one file named `merged_DDMMYYYY.gpx` (with today's date merged).
 
 - **Waypoints**: all waypoints from all files, with name, description, symbol, elevation and the Garmin address data.
 - **Tracks**: one `<trk>` per file, with the file name as its name. Each line is a `<trkseg>`.
@@ -148,7 +155,7 @@ The **Exporteer als 1 GPX** button merges all loaded files into one file named `
 
 ## Browser storage
 
-With **Onthoud in deze browser**, the page stores the loaded data in your browser's `localStorage`, so it is still there after closing the page.
+With **Remember in this browser**, the page stores the loaded data in your browser's `localStorage`, so it is still there after closing the page.
 
 - Per file, the name, colour, points (including edits and custom pin colour) and lines are stored, not the original GPX file.
 - If you untick the box, everything that was stored is deleted again.
