@@ -2,6 +2,8 @@
 
 A browser-based Leaflet application for viewing, editing and exporting GPX files. You can load multiple GPX files, view waypoints, tracks and routes on the map, edit waypoints in a sidebar and export the supported data as one GPX file.
 
+**[See the working demo &raquo;](https://bertmu.github.io/GPX-POI-Editor/)**
+
 ![preview](https://bertmu.github.io/GPX-POI-Editor/preview.jpg)
 
 Most processing takes place locally in the browser. The optional reverse address lookup sends coordinates to the Nominatim service; map tiles and JavaScript libraries are also loaded from external servers.
