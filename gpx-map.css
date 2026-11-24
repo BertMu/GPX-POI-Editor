@@ -2,12 +2,24 @@
   body { display: flex; }
 #map { flex: 1; min-width: 0; height: 100%; }
 
-  #panel {
-    position: absolute; top: 10px; right: 10px; z-index: 1000;
-    width: 260px; max-height: calc(100% - 20px); overflow-y: auto;
-    background: #fff; border-radius: 6px; padding: 12px;
-    box-shadow: 0 1px 6px rgba(0,0,0,.35);
-  }
+ #panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+
+  width: 460px;
+  max-width: calc(100vw - 20px);
+  box-sizing: border-box;
+
+  max-height: calc(100% - 20px);
+  overflow-y: auto;
+
+  background: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.35);
+}
   #panel h1 { font-size: 15px; margin: 0 0 8px; }
   #panel button {
     font: inherit; padding: 6px 10px; border: 1px solid #b8c0c8; background: #f6f8fa;
@@ -21,7 +33,13 @@
     display: flex; align-items: center; gap: 6px; padding: 5px 0;
     border-top: 1px solid #e3e7eb;
   }
-  #list .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #list .nm {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+}
   #list .ct { color: #6b7785; font-size: 12px; }
   #list .rm { padding: 1px 7px; line-height: 1.2; }
 

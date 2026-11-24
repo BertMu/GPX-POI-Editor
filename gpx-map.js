@@ -198,19 +198,31 @@ function descendants(el, name) {
 
 function parseGpx(text) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
-  if (doc.querySelector('parsererror')) throw new Error('This is no valid GPX-file.');
+  if (doc.querySelector('parsererror')) {
+    throw new Error('This is no valid GPX-file.');
+  }
 
-  const first = (el, n) => descendants(el, n)[0]?.textContent.trim() || '';
+  const first = (el, n) =>
+    descendants(el, n)[0]?.textContent.trim() || '';
+
+  // Waypoints
   const wpts = Array.from(doc.getElementsByTagName('wpt')).map(w => {
-    const streets = descendants(w, 'StreetAddress').map(e => e.textContent.trim()).filter(Boolean);
+    const streets = descendants(w, 'StreetAddress')
+      .map(e => e.textContent.trim())
+      .filter(Boolean);
+
     const postal = first(w, 'PostalCode');
     const city = first(w, 'City');
     const country = first(w, 'Country');
+
     const addr = [
       streets.join(', '),
       [postal, city].filter(Boolean).join(' '),
       country
     ].filter(Boolean).join(', ');
+
+    const proximityText = first(w, 'Proximity');
+
     return {
       lat: parseFloat(w.getAttribute('lat')),
       lon: parseFloat(w.getAttribute('lon')),
@@ -218,48 +230,454 @@ function parseGpx(text) {
       name: childText(w, 'name'),
       desc: childText(w, 'desc'),
       sym: childText(w, 'sym'),
-      streets, postal, city, country,
+
+      streets,
+      postal,
+      city,
+      country,
+
       phone: first(w, 'PhoneNumber'),
       email: first(w, 'Email'),
-      addr
+      addr,
+
+      // Garmin waypoint extensions
+      displayMode: first(w, 'DisplayMode'),
+      proximity: proximityText !== ''
+        ? Number(proximityText)
+        : null
     };
   }).filter(w => !isNaN(w.lat) && !isNaN(w.lon));
 
-  const pts = els => els.map(p => [parseFloat(p.getAttribute('lat')), parseFloat(p.getAttribute('lon'))])
-                        .filter(p => !isNaN(p[0]) && !isNaN(p[1]));
+  // Coördinaten omzetten
+  const pts = els => els.map(p => [
+    parseFloat(p.getAttribute('lat')),
+    parseFloat(p.getAttribute('lon'))
+  ]).filter(p => !isNaN(p[0]) && !isNaN(p[1]));
+
+  // Tracks
   const lines = [];
+
   Array.from(doc.getElementsByTagName('trkseg')).forEach(seg => {
     const l = pts(Array.from(seg.getElementsByTagName('trkpt')));
     if (l.length > 1) lines.push(l);
   });
+
+  // Routes met afzonderlijke routepunten
+  const routes = [];
+
   Array.from(doc.getElementsByTagName('rte')).forEach(r => {
-    const l = pts(Array.from(r.getElementsByTagName('rtept')));
-    if (l.length > 1) lines.push(l);
+    const route = {
+      name: childText(r, 'name'),
+      points: []
+    };
+
+    Array.from(r.children)
+      .filter(e => e.localName === 'rtept')
+      .forEach(p => {
+        const lat = parseFloat(p.getAttribute('lat'));
+        const lon = parseFloat(p.getAttribute('lon'));
+
+        if (isNaN(lat) || isNaN(lon)) return;
+
+        const hasViaPoint = descendants(p, 'ViaPoint').length > 0;
+        const hasShapingPoint = descendants(p, 'ShapingPoint').length > 0;
+
+        let pointType = '';
+
+        if (hasViaPoint) {
+          pointType = 'ViaPoint';
+        } else if (hasShapingPoint) {
+          pointType = 'ShapingPoint';
+        }
+
+        route.points.push({
+          lat,
+          lon,
+          ele: parseFloat(childText(p, 'ele')) || 0,
+          name: childText(p, 'name'),
+          desc: childText(p, 'desc'),
+          type: childText(p, 'type'),
+          pointType,
+          viaPoint: hasViaPoint,
+          shapingPoint: hasShapingPoint
+        });
+      });
+
+    if (route.points.length) {
+      routes.push(route);
+    }
   });
 
-  if (!wpts.length && !lines.length) throw new Error('No waypoints, tracks or routes found.');
-  return { wpts, lines };
+  if (!wpts.length && !lines.length && !routes.length) {
+    throw new Error('No waypoints, tracks or routes found.');
+  }
+
+  return { wpts, lines, routes };
 }
 
 /* ---------- Tekenen ---------- */
-function popupHtml(w) {
+function popupHtml(w, sourceFile) {
   const div = document.createElement('div');
-  const add = (tag, text) => { if (!text) return; const e = document.createElement(tag); e.textContent = text; div.appendChild(e); };
+
+  const add = (tag, text) => {
+    if (text === undefined || text === null || text === '') return;
+
+    const e = document.createElement(tag);
+    e.textContent = text;
+    div.appendChild(e);
+  };
+
   add('b', w.name);
   add('div', w.desc);
   add('small', w.addr);
+
+  if (w.displayMode) {
+    add('div', 'Display mode: ' + w.displayMode);
+  }
+
+  if (w.proximity !== undefined && w.proximity !== null) {
+    add('div', 'Proximity: ' + w.proximity + ' m');
+  }
+
+  if (w.pointType) {
+    add('div', 'Route point: ' + w.pointType);
+  }
+
+  // Kopieerknop alleen voor gewone POI's
+  if (sourceFile && sourceFile.wpts.includes(w)) {
+    const btn = document.createElement('button');
+
+    btn.type = 'button';
+    btn.textContent = '📋 Copy to Layer…';
+    btn.style.cssText =
+      'display:block;margin-top:10px;padding:6px 10px;' +
+      'cursor:pointer;border:1px solid #aaa;border-radius:4px;' +
+      'background:#f5f5f5;';
+
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      showCopyDialog(sourceFile, w);
+    });
+
+    div.appendChild(btn);
+  }
+  // Verplaatsknop alleen voor gewone POI's
+  if (sourceFile && sourceFile.wpts.includes(w)) {
+    const btnMove = document.createElement('button');
+
+    btnMove.type = 'button';
+    btnMove.textContent = '📍 Move POI';
+    btnMove.style.cssText =
+      'display:block;margin-top:6px;padding:6px 10px;' +
+      'cursor:pointer;border:1px solid #aaa;border-radius:4px;' +
+      'background:#f5f5f5;';
+
+    btnMove.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      startPopupMove(sourceFile, w);
+    });
+
+    div.appendChild(btnMove);
+  }
   return div;
 }
 
+/* =====================================================
+   ADD-ON: POI VERPLAATSEN BINNEN DE BESTAANDE LAAG
+   ===================================================== */
+
+let movingPoi = null;
+
+function startPopupMove(sourceFile, waypoint) {
+
+  if (!files.includes(sourceFile) ||
+      !sourceFile.wpts.includes(waypoint)) {
+    msg('POI not found.');
+    return;
+  }
+
+  movingPoi = {
+    file: sourceFile,
+    waypoint: waypoint
+  };
+
+  setAction('movePoi');
+
+  msg(
+    'Klik op de kaart om de nieuwe positie te kiezen. ' +
+    '(Esc = annuleren)'
+  );
+
+  // Sluit de popup zodat deze de kaart niet bedekt
+  map.closePopup();
+}
+
+/* =====================================================
+   ADD-ON: POI KOPIËREN NAAR EEN ANDERE LAAG
+   ===================================================== */
+
+// Toon popup waarin de gebruiker de doellaag kiest
+function showCopyDialog(sourceFile, sourceWaypoint) {
+
+  const dialog = document.createElement('dialog');
+
+  dialog.style.cssText =
+    'border:1px solid #aaa;border-radius:8px;' +
+    'padding:20px;min-width:400px;max-width:90%;' +
+    'box-shadow:0 4px 20px rgba(0,0,0,.25);';
+
+  // Titel
+  const title = document.createElement('h3');
+  title.textContent = 'POI kopiëren';
+  title.style.marginTop = '0';
+
+  // Naam van de POI
+  const info = document.createElement('p');
+  info.textContent = sourceWaypoint.name || 'Naamloze POI';
+
+  // Label
+  const label = document.createElement('label');
+  label.textContent = 'Doellaag:';
+  label.style.display = 'block';
+  label.style.marginBottom = '6px';
+
+  // Selectie
+  const select = document.createElement('select');
+  select.style.cssText =
+    'width:100%;padding:8px;margin-bottom:15px;';
+
+  // Bestaande lagen, behalve de bronlaag
+  files.forEach((f, i) => {
+    if (f === sourceFile) return;
+
+    select.add(new Option(f.name, String(i)));
+  });
+
+  // Optie om een nieuwe laag te maken
+  select.add(new Option('＋ Nieuwe laag aanmaken', 'new'));
+
+  // Knoppen
+  const buttons = document.createElement('div');
+  buttons.style.cssText =
+    'display:flex;justify-content:flex-end;gap:8px;';
+
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = 'Annuleren';
+
+  const confirm = document.createElement('button');
+  confirm.type = 'button';
+  confirm.textContent = 'Kopiëren';
+  confirm.style.fontWeight = 'bold';
+
+  buttons.append(cancel, confirm);
+
+  dialog.append(title, info, label, select, buttons);
+  document.body.appendChild(dialog);
+
+  cancel.addEventListener('click', () => dialog.close());
+
+  confirm.addEventListener('click', () => {
+
+    if (select.value === 'new') {
+
+      const defaultName =
+        sourceFile.name.replace(/\.[^.]+$/, '') + '_kopie.gpx';
+
+      const newName = prompt(
+        'Naam van de nieuwe laag:',
+        defaultName
+      );
+
+      if (newName === null) return;
+
+      if (!newName.trim()) {
+        alert('Geef een naam op voor de nieuwe laag.');
+        return;
+      }
+
+      copyWaypointToNewLayer(
+        sourceFile,
+        sourceWaypoint,
+        newName.trim()
+      );
+
+    
+
+    } else {
+
+      const targetFile = files[Number(select.value)];
+
+      if (!targetFile || targetFile === sourceFile) {
+        alert('Ongeldige doellaag.');
+        return;
+      }
+
+      copyWaypointToLayer(
+        sourceFile,
+        sourceWaypoint,
+        targetFile
+      );
+    }
+
+    dialog.close();
+  });
+
+  dialog.addEventListener('close', () => dialog.remove());
+
+  dialog.addEventListener('click', e => {
+    if (e.target === dialog) dialog.close();
+  });
+
+  dialog.showModal();
+}
+
+
+// Maak een onafhankelijke kopie van een POI
+function cloneWaypoint(w) {
+
+  // JSON-kopie neemt ook alle aanvullende eigenschappen mee,
+  // waaronder Garmin DisplayMode en Proximity.
+  return JSON.parse(JSON.stringify(w));
+}
+
+
+// Kopieer naar een bestaande laag
+function copyWaypointToLayer(sourceFile, sourceWaypoint, targetFile) {
+
+  if (!files.includes(sourceFile) || !files.includes(targetFile)) {
+    return;
+  }
+
+  if (sourceFile === targetFile) {
+    alert('Kies een andere laag dan de bronlaag.');
+    return;
+  }
+
+  const copy = cloneWaypoint(sourceWaypoint);
+
+  targetFile.wpts.push(copy);
+
+  // Doellaag opnieuw tekenen
+  draw(targetFile);
+
+  // Lijst, legenda en opslag bijwerken
+  renderList();
+  save();
+
+  msg('POI gekopieerd naar: ' + targetFile.name);
+}
+
+
+// Kopieer naar een nieuwe laag
+function copyWaypointToNewLayer(sourceFile, sourceWaypoint, newName) {
+
+  const copy = cloneWaypoint(sourceWaypoint);
+
+  const newFile = {
+    name: newName,
+    color: COLORS[files.length % COLORS.length],
+    wpts: [copy],
+    lines: [],
+    routes: [],
+    group: null
+  };
+
+  files.push(newFile);
+
+  draw(newFile);
+  renderList();
+  save();
+
+  msg('Nieuwe laag aangemaakt: ' + newName);
+}
+
+
+
 function draw(f) {
   if (f.group) f.group.remove();
+
   f.group = L.featureGroup().addTo(map);
-  f.lines.forEach(l => L.polyline(l, { color: f.color, weight: 4, opacity: .85 }).addTo(f.group));
-  f.wpts.forEach(w => {
+
+  // Tracks
+  (f.lines || []).forEach(l => {
+    L.polyline(l, {
+      color: f.color,
+      weight: 4,
+      opacity: .85
+    }).addTo(f.group);
+  });
+
+  // Waypoints
+  (f.wpts || []).forEach(w => {
     const m = L.marker([w.lat, w.lon], {
       icon: makeIcon(f, w)
-    }).bindPopup(() => popupHtml(w)).bindTooltip(() => w.name || '', { direction: 'top' }).addTo(f.group);
-    m.on('click', () => { if (editMode) { m.closePopup(); selectPoint(f, w); } });
+    })
+      .bindPopup(() => popupHtml(w, f), {
+        minWidth: 200,
+        maxWidth: 400,
+        autoPan: true     })
+      .bindTooltip(() => w.name || '', {
+        direction: 'top'
+      })
+      .addTo(f.group);
+
+    m.on('click', () => {
+      if (editMode) {
+        m.closePopup();
+        selectPoint(f, w);
+      }
+    });
+  });
+
+  // Routes
+  (f.routes || []).forEach(route => {
+    const routeCoords = route.points.map(p => [p.lat, p.lon]);
+
+    // Route als stippellijn
+    if (routeCoords.length > 1) {
+      L.polyline(routeCoords, {
+        color: f.color,
+        weight: 4,
+        opacity: .9,
+        dashArray: '8, 6'
+      }).addTo(f.group);
+    }
+
+    // Afzonderlijke routepunten
+    route.points.forEach(p => {
+      let radius = 4;
+      let fillColor = f.color;
+
+      if (p.viaPoint) {
+        radius = 8;
+        fillColor = '#d93025';
+      } else if (p.shapingPoint) {
+        radius = 4;
+        fillColor = '#1a73e8';
+      }
+
+      const marker = L.circleMarker([p.lat, p.lon], {
+        radius: radius,
+        color: '#ffffff',
+        weight: 2,
+        fillColor: fillColor,
+        fillOpacity: 1
+      });
+
+      marker
+        .bindPopup(() => popupHtml(p), {
+          minWidth: 200,
+          maxWidth: 400,
+          autoPan: true
+        })
+        .bindTooltip(() => p.name || p.pointType || '', {
+          direction: 'top'
+        })
+        .addTo(f.group);
+    });
   });
 }
 
@@ -273,7 +691,15 @@ function renderList() {
     const nm = document.createElement('span');
     nm.className = 'nm'; nm.textContent = f.name; nm.title = f.name;
     const ct = document.createElement('span');
-    ct.className = 'ct'; ct.textContent = f.wpts.length + ' points' + (f.lines.length ? ', ' + f.lines.length + ' lines' : '');
+   ct.className = 'ct';
+
+    const routePointCount = (f.routes || [])
+      .reduce((sum, route) => sum + route.points.length, 0);
+
+    ct.textContent =
+      f.wpts.length + ' waypoints' +
+      (routePointCount ? ', ' + routePointCount + ' routepoints' : '') +
+      (f.lines.length ? ', ' + f.lines.length + ' tracks' : '');
     const rm = document.createElement('button');
     rm.className = 'rm'; rm.textContent = '×'; rm.title = 'Remove';
     rm.onclick = () => { if (selected && selected.f === f) deselect(); f.group && f.group.remove(); files.splice(i, 1); renderList(); save(); };
@@ -314,7 +740,7 @@ function formatOf(name) {
 function makeWpt(p) {
   const w = Object.assign({
     lat: NaN, lon: NaN, ele: 0, name: '', desc: '', sym: '',
-    streets: [], postal: '', city: '', country: '', phone: '', email: '', addr: ''
+    streets: [], postal: '', city: '', country: '', phone: '', email: '', addr: '', displayMode:'', proximity: null
   }, p);
   w.addr = makeAddr(w);
   return w;
@@ -334,11 +760,20 @@ function registerSymbol(name, icon) {
 
 // Adds a ready-made set of waypoints (and lines) as a new file in the list
 function addWaypointFile(name, wpts, lines) {
-  const f = { name, color: COLORS[files.length % COLORS.length], wpts: wpts || [], lines: lines || [], group: null };
+  const f = {
+    name,
+    color: COLORS[files.length % COLORS.length],
+    wpts: wpts || [],
+    lines: lines || [],
+    routes: [],
+    group: null
+  };
+
   files.push(f);
   draw(f);
   renderList();
   save();
+
   return f;
 }
 
@@ -358,8 +793,21 @@ window.GpxMap = {
 };
 
 function addFile(name, text) {
-  const { wpts, lines } = formatOf(name).parse(text, name);
-  const f = { name, color: COLORS[files.length % COLORS.length], wpts, lines, group: null };
+  const {
+    wpts,
+    lines,
+    routes = []
+  } = formatOf(name).parse(text, name);
+
+  const f = {
+    name,
+    color: COLORS[files.length % COLORS.length],
+    wpts,
+    lines,
+    routes,
+    group: null
+  };
+
   files.push(f);
   draw(f);
 }
@@ -385,7 +833,15 @@ function handleFiles(fileList) {
 function save() {
   try {
     if ($('persist').checked) {
-      localStorage.setItem(KEY, JSON.stringify(files.map(({ name, color, wpts, lines }) => ({ name, color, wpts, lines }))));
+      localStorage.setItem(KEY, JSON.stringify(
+  files.map(({ name, color, wpts, lines, routes }) => ({
+    name,
+    color,
+    wpts,
+    lines,
+    routes: routes || []
+  }))
+));
       localStorage.setItem(KEY + ':on', '1');
     } else {
       localStorage.removeItem(KEY);
@@ -411,53 +867,316 @@ function xmlEsc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+
+
 function buildGpx() {
-  let g = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n';
-  g += '<gpx xmlns="http://www.topografix.com/GPX/1/1" ' +
-       'xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3" ' +
-       'creator="GPX POI Editor" version="1.1">\n';
 
-  // eerst alle waypoints van alle bestanden
-  files.forEach(f => f.wpts.forEach(w => {
-    g += '  <wpt lat="' + w.lat.toFixed(6) + '" lon="' + w.lon.toFixed(6) + '">\n';
-    g += '    <ele>' + (w.ele || 0) + '</ele>\n';
-    if (w.name) g += '    <name>' + xmlEsc(w.name) + '</name>\n';
-    if (w.desc) g += '    <desc>' + xmlEsc(w.desc) + '</desc>\n';
-    if (w.sym)  g += '    <sym>' + xmlEsc(w.sym) + '</sym>\n';
+  let g = '<?xml version="1.0" encoding="utf-8"?>\n';
 
-    const streets = w.streets || [];
-    const hasAddr = streets.length || w.postal || w.city || w.country;
-    if (hasAddr || w.phone || w.email) {
-      g += '    <extensions>\n      <gpxx:WaypointExtension>\n';
-      if (hasAddr) {
-        g += '        <gpxx:Address>\n';
-        streets.forEach(s => { g += '          <gpxx:StreetAddress>' + xmlEsc(s) + '</gpxx:StreetAddress>\n'; });
-        if (w.postal)  g += '          <gpxx:PostalCode>' + xmlEsc(w.postal) + '</gpxx:PostalCode>\n';
-        if (w.city)    g += '          <gpxx:City>' + xmlEsc(w.city) + '</gpxx:City>\n';
-        if (w.country) g += '          <gpxx:Country>' + xmlEsc(w.country) + '</gpxx:Country>\n';
-        g += '        </gpxx:Address>\n';
-      }
-      if (w.phone) g += '        <gpxx:PhoneNumber Category="Phone">' + xmlEsc(w.phone) + '</gpxx:PhoneNumber>\n';
-      if (w.email) g += '        <gpxx:Email>' + xmlEsc(w.email) + '</gpxx:Email>\n';
-      g += '      </gpxx:WaypointExtension>\n    </extensions>\n';
+  g += '<gpx creator="GPX POI Generator" version="1.1"\n';
+
+  // Garmin schema locations
+  g += ' xsi:schemaLocation="';
+  g += 'http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/WaypointExtension/v1 http://www8.garmin.com/xmlschemas/WaypointExtensionv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/TrackPointExtension/v1 http://www8.garmin.com/xmlschemas/TrackPointExtensionv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/GpxExtensions/v3 http://www8.garmin.com/xmlschemas/GpxExtensionsv3.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/ActivityExtension/v1 http://www8.garmin.com/xmlschemas/ActivityExtensionv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/AdventuresExtensions/v1 http://www8.garmin.com/xmlschemas/AdventuresExtensionv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/PressureExtension/v1 http://www8.garmin.com/xmlschemas/PressureExtensionv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/TripExtensions/v1 http://www8.garmin.com/xmlschemas/TripExtensionsv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/TripMetaDataExtensions/v1 http://www8.garmin.com/xmlschemas/TripMetaDataExtensionsv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/ViaPointTransportationModeExtensions/v1 http://www8.garmin.com/xmlschemas/ViaPointTransportationModeExtensionsv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/CreationTimeExtension/v1 http://www8.garmin.com/xmlschemas/CreationTimeExtensionsv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/AccelerationExtension/v1 http://www8.garmin.com/xmlschemas/AccelerationExtensionv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/PowerExtension/v1 http://www8.garmin.com/xmlschemas/PowerExtensionv1.xsd ';
+  g += 'http://www.garmin.com/xmlschemas/VideoExtension/v1 http://www8.garmin.com/xmlschemas/VideoExtensionv1.xsd';
+  g += '"\n';
+
+  // XML namespaces
+  g += ' xmlns="http://www.topografix.com/GPX/1/1"\n';
+  g += ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n';
+  g += ' xmlns:wptx1="http://www.garmin.com/xmlschemas/WaypointExtension/v1"\n';
+  g += ' xmlns:gpxtrx="http://www.garmin.com/xmlschemas/GpxExtensions/v3"\n';
+  g += ' xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"\n';
+  g += ' xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3"\n';
+  g += ' xmlns:trp="http://www.garmin.com/xmlschemas/TripExtensions/v1"\n';
+  g += ' xmlns:adv="http://www.garmin.com/xmlschemas/AdventuresExtensions/v1"\n';
+  g += ' xmlns:prs="http://www.garmin.com/xmlschemas/PressureExtension/v1"\n';
+  g += ' xmlns:tmd="http://www.garmin.com/xmlschemas/TripMetaDataExtensions/v1"\n';
+  g += ' xmlns:vptm="http://www.garmin.com/xmlschemas/ViaPointTransportationModeExtensions/v1"\n';
+  g += ' xmlns:ctx="http://www.garmin.com/xmlschemas/CreationTimeExtension/v1"\n';
+  g += ' xmlns:gpxacc="http://www.garmin.com/xmlschemas/AccelerationExtension/v1"\n';
+  g += ' xmlns:gpxpx="http://www.garmin.com/xmlschemas/PowerExtension/v1"\n';
+  g += ' xmlns:vidx1="http://www.garmin.com/xmlschemas/VideoExtension/v1">\n';
+
+  // --------------------------------------------------
+  // Hierna volgen de bestaande WAYPOINTS, ROUTES
+  // en TRACKS
+  // --------------------------------------------------
+
+
+
+ // ==================================================
+ // 1. WAYPOINTS
+ // ==================================================
+ files.forEach(f => (f.wpts || []).forEach(w => {
+
+   // Controleer coördinaten
+   if (!Number.isFinite(Number(w.lat)) ||
+       !Number.isFinite(Number(w.lon))) return;
+
+   // Begin waypoint
+   g += '  <wpt lat="' + Number(w.lat).toFixed(7) +
+        '" lon="' + Number(w.lon).toFixed(7) + '">\n';
+
+   // Elevation
+   if (w.ele !== undefined && w.ele !== null) {
+     g += '    <ele>' + (Number(w.ele) || 0) + '</ele>\n';
+   }
+
+   // Name
+   if (w.name) {
+     g += '    <name>' + xmlEsc(w.name) + '</name>\n';
+   }
+
+   // Description
+   if (w.desc) {
+     g += '    <desc>' + xmlEsc(w.desc) + '</desc>\n';
+   }
+
+   // Symbol
+   if (w.sym) {
+     g += '    <sym>' + xmlEsc(w.sym) + '</sym>\n';
+   }
+
+   // ==================================================
+   // Controleer aanwezige extensies
+   // ==================================================
+
+   const hasProximity =
+     w.proximity !== undefined &&
+     w.proximity !== null &&
+     w.proximity !== '' &&
+     Number.isFinite(Number(w.proximity));
+
+   const hasDisplayMode = !!w.displayMode;
+
+   const streets = w.streets || [];
+
+   const hasAddr =
+     streets.length > 0 ||
+     !!w.city ||
+     !!w.state ||
+     !!w.country ||
+     !!w.postal;
+
+   const hasContact =
+     !!w.phone || !!w.email;
+
+   const hasExtensions =
+     hasProximity ||
+     hasDisplayMode ||
+     hasAddr ||
+     hasContact;
+
+   // ==================================================
+   // Garmin extensions
+   // Beide namespaces volledig vullen
+   // ==================================================
+
+   if (hasExtensions) {
+
+     g += '    <extensions>\n';
+
+     // Functie om een volledige Garmin WaypointExtension
+     // op te bouwen met de opgegeven namespace.
+     function appendWaypointExtension(prefix) {
+
+       g += '      <' + prefix + ':WaypointExtension>\n';
+
+       // Proximity
+       if (hasProximity) {
+         g += '        <' + prefix + ':Proximity>' +
+              Number(w.proximity) +
+              '</' + prefix + ':Proximity>\n';
+       }
+
+       // DisplayMode
+       if (hasDisplayMode) {
+         g += '        <' + prefix + ':DisplayMode>' +
+              xmlEsc(w.displayMode) +
+              '</' + prefix + ':DisplayMode>\n';
+       }
+
+       // Address
+       if (hasAddr) {
+
+         g += '        <' + prefix + ':Address>\n';
+
+         // StreetAddress
+         streets.forEach(s => {
+           g += '          <' + prefix + ':StreetAddress>' +
+                xmlEsc(s) +
+                '</' + prefix + ':StreetAddress>\n';
+         });
+
+         // City
+         if (w.city) {
+           g += '          <' + prefix + ':City>' +
+                xmlEsc(w.city) +
+                '</' + prefix + ':City>\n';
+         }
+
+         // State (optioneel)
+         if (w.state) {
+           g += '          <' + prefix + ':State>' +
+                xmlEsc(w.state) +
+                '</' + prefix + ':State>\n';
+         }
+
+         // Country
+         if (w.country) {
+           g += '          <' + prefix + ':Country>' +
+                xmlEsc(w.country) +
+                '</' + prefix + ':Country>\n';
+         }
+
+         // PostalCode
+         if (w.postal) {
+           g += '          <' + prefix + ':PostalCode>' +
+                xmlEsc(w.postal) +
+                '</' + prefix + ':PostalCode>\n';
+         }
+
+         g += '        </' + prefix + ':Address>\n';
+       }
+
+       // Phone
+       if (w.phone) {
+         g += '        <' + prefix + ':PhoneNumber Category="Phone">' +
+              xmlEsc(w.phone) +
+              '</' + prefix + ':PhoneNumber>\n';
+       }
+
+       // Email
+       if (w.email) {
+         g += '        <' + prefix + ':Email>' +
+              xmlEsc(w.email) +
+              '</' + prefix + ':Email>\n';
+       }
+
+       g += '      </' + prefix + ':WaypointExtension>\n';
+     }
+
+     // 1. GpxExtensions v3
+     appendWaypointExtension('gpxx');
+
+     // 2. WaypointExtension v1
+     appendWaypointExtension('wptx1');
+
+     g += '    </extensions>\n';
+   }
+
+   // Einde waypoint
+   g += '  </wpt>\n';
+
+ }));
+
+
+
+  // ==================================================
+  // 2. ROUTES MET ROUTEPOINTS
+  // ==================================================
+  files.forEach(f => (f.routes || []).forEach(route => {
+
+    if (!route.points || !route.points.length) return;
+
+    g += '  <rte>\n';
+
+    if (route.name) {
+      g += '    <name>' + xmlEsc(route.name) + '</name>\n';
     }
-    g += '  </wpt>\n';
+
+    route.points.forEach(p => {
+
+      if (!Number.isFinite(Number(p.lat)) ||
+          !Number.isFinite(Number(p.lon))) return;
+
+      g += '    <rtept lat="' + Number(p.lat).toFixed(7) +
+           '" lon="' + Number(p.lon).toFixed(7) + '">\n';
+
+      if (p.ele !== undefined && p.ele !== null) {
+        g += '      <ele>' + (Number(p.ele) || 0) + '</ele>\n';
+      }
+
+      if (p.name) {
+        g += '      <name>' + xmlEsc(p.name) + '</name>\n';
+      }
+
+      if (p.desc) {
+        g += '      <desc>' + xmlEsc(p.desc) + '</desc>\n';
+      }
+
+      if (p.type) {
+        g += '      <type>' + xmlEsc(p.type) + '</type>\n';
+      }
+
+      // Garmin routepoint extensions
+      if (p.viaPoint || p.shapingPoint) {
+        g += '      <extensions>\n';
+
+        if (p.viaPoint) {
+          g += '        <trp:ViaPoint/>\n';
+        } else if (p.shapingPoint) {
+          g += '        <trp:ShapingPoint/>\n';
+        }
+
+        g += '      </extensions>\n';
+      }
+
+      g += '    </rtept>\n';
+    });
+
+    g += '  </rte>\n';
   }));
 
-  // daarna de tracks: per bestand één <trk>, elke lijn een <trkseg>
+  // ==================================================
+  // 3. TRACKS
+  // ==================================================
   files.forEach(f => {
-    if (!f.lines.length) return;
-    g += '  <trk>\n    <name>' + xmlEsc(f.name.replace(/\.[a-z0-9]+$/i, '')) + '</name>\n';
+
+    if (!f.lines || !f.lines.length) return;
+
+    g += '  <trk>\n';
+
+    g += '    <name>' +
+         xmlEsc(f.name.replace(/\.[a-z0-9]+$/i, '')) +
+         '</name>\n';
+
     f.lines.forEach(l => {
+
+      if (!l || l.length < 2) return;
+
       g += '    <trkseg>\n';
-      l.forEach(p => { g += '      <trkpt lat="' + p[0] + '" lon="' + p[1] + '"></trkpt>\n'; });
+
+      l.forEach(p => {
+        if (!Number.isFinite(Number(p[0])) ||
+            !Number.isFinite(Number(p[1]))) return;
+
+        g += '      <trkpt lat="' + Number(p[0]).toFixed(7) +
+             '" lon="' + Number(p[1]).toFixed(7) + '"></trkpt>\n';
+      });
+
       g += '    </trkseg>\n';
     });
+
     g += '  </trk>\n';
   });
 
   return g + '</gpx>\n';
 }
+
 
 function exportGpx() {
   if (!files.length) return;
@@ -485,6 +1204,7 @@ const FIELDS = [
   { k: 'lat',     l: 'Latitude' },
   { k: 'lon',     l: 'Longitude' },
   { k: 'ele',     l: 'Elevation' },
+  { k: 'proximity', l: 'Proximity (m)' },
   { k: 'street1', l: 'Street1' },
   { k: 'street2', l: 'Street2' },
   { k: 'postal',  l: 'Postalcode' },
@@ -502,7 +1222,16 @@ function buildForm() {
     const lab = document.createElement('label');
     lab.textContent = fd.l;
     const inp = document.createElement(fd.area ? 'textarea' : 'input');
-    if (fd.area) inp.rows = 2; else inp.type = 'text';
+    if (fd.area) {
+      inp.rows = 2;
+    } else {
+      inp.type = fd.k === 'proximity' ? 'number' : 'text';
+
+      if (fd.k === 'proximity') {
+        inp.min = 0;
+        inp.step = 1;
+      }
+}
     inp.id = 'ed_' + fd.k;
     if (fd.k === 'sym') inp.setAttribute('list', 'symList');
     lab.appendChild(inp);
@@ -582,9 +1311,24 @@ function applyForm() {
 
   const v = k => $('ed_' + k).value.trim();
   const w = selected.w;
-  w.lat = lat; w.lon = lon;
+  w.lat = lat;
+  w.lon = lon;
   w.ele = num(v('ele')) || 0;
-  w.name = v('name'); w.desc = v('desc'); w.sym = v('sym');
+
+  // Garmin Proximity
+  const proximityText = v('proximity');
+  const proximity = proximityText === '' ? null : num(proximityText);
+
+  if (proximity !== null && (!Number.isFinite(proximity) || proximity < 0)) {
+    edMsg('Proximity must be a valid non-negative number.', true);
+    return;
+  }
+
+  w.proximity = proximity;
+
+  w.name = v('name');
+  w.desc = v('desc');
+  w.sym = v('sym');
   w.streets = [v('street1'), v('street2')].filter(Boolean);
   w.postal = v('postal'); w.city = v('city'); w.country = v('country');
   w.phone = v('phone'); w.email = v('email');
@@ -622,13 +1366,42 @@ function fillTargets() {
 }
 
 function onMapClickEdit(e) {
-  if (!editMode || !mapAction) return;
+  if ( !mapAction) return;
+    // POI verplaatsen vanuit de popup
+  if (mapAction === 'movePoi' && movingPoi) {
+    const { file, waypoint } = movingPoi;
+
+    if (!files.includes(file) || !file.wpts.includes(waypoint)) {
+      movingPoi = null;
+      setAction(null);
+      msg('POI niet meer gevonden.');
+      return;
+    }
+
+    waypoint.lat = +e.latlng.lat.toFixed(6);
+    waypoint.lon = +e.latlng.lng.toFixed(6);
+
+    // Verwijder de tijdelijke verplaatsstatus
+    movingPoi = null;
+    setAction(null);
+
+    // Laag opnieuw tekenen en gegevens opslaan
+    draw(file);
+    renderList();
+    save();
+
+    msg('POI succesvol verplaatst.');
+    return;
+  }
+
+  // De overige kaartacties alleen in de bewerkmodus
+  if (!editMode) return;
   const lat = +e.latlng.lat.toFixed(6), lon = +e.latlng.lng.toFixed(6);
 
   if (mapAction === 'add') {
     let f = files[Number($('edTarget').value)];
     if (!f) {
-      f = { name: 'New points.gpx', color: COLORS[files.length % COLORS.length], wpts: [], lines: [], group: null };
+      f = { name: 'New points.gpx', color: COLORS[files.length % COLORS.length], wpts: [], lines: [], routes:[], group: null };
       files.push(f);
     }
     const w = { lat, lon, ele: 0, name: 'New point', desc: '', sym: '', streets: [], postal: '', city: '', country: '', phone: '', email: '', addr: '' };
@@ -720,7 +1493,14 @@ $('edDel').addEventListener('click', deletePoint);
 $('edMove').addEventListener('click', () => { setAction('move'); edMsg('Click on the map for the new position (Esc = cancel).'); });
 $('edAdd').addEventListener('click', () => { setAction('add'); edMsg('Click on the map to place a new point (Esc = cancel).'); });
 $('edClose').addEventListener('click', () => setEdit(false));
-window.addEventListener('keydown', e => { if (e.key === 'Escape' && mapAction) { setAction(null); edMsg(''); } });
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && mapAction) {
+    movingPoi = null;
+    setAction(null);
+    msg('');
+    edMsg('');
+  }
+});
 
 /* ---------- Events ---------- */
 $('persist').addEventListener('change', save);
