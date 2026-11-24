@@ -406,8 +406,8 @@ function startPopupMove(sourceFile, waypoint) {
   setAction('movePoi');
 
   msg(
-    'Klik op de kaart om de nieuwe positie te kiezen. ' +
-    '(Esc = annuleren)'
+    'click on the map for a new position. ' +
+    '(Esc = cancel)'
   );
 
   // Sluit de popup zodat deze de kaart niet bedekt
@@ -430,16 +430,16 @@ function showCopyDialog(sourceFile, sourceWaypoint) {
 
   // Titel
   const title = document.createElement('h3');
-  title.textContent = 'POI kopiëren';
+  title.textContent = 'Copy POI';
   title.style.marginTop = '0';
 
   // Naam van de POI
   const info = document.createElement('p');
-  info.textContent = sourceWaypoint.name || 'Naamloze POI';
+  info.textContent = sourceWaypoint.name || 'Nameless POI';
 
   // Label
   const label = document.createElement('label');
-  label.textContent = 'Doellaag:';
+  label.textContent = 'Layer:';
   label.style.display = 'block';
   label.style.marginBottom = '6px';
 
@@ -456,7 +456,7 @@ function showCopyDialog(sourceFile, sourceWaypoint) {
   });
 
   // Optie om een nieuwe laag te maken
-  select.add(new Option('＋ Nieuwe laag aanmaken', 'new'));
+  select.add(new Option('＋ Make new layer', 'new'));
 
   // Knoppen
   const buttons = document.createElement('div');
@@ -465,11 +465,11 @@ function showCopyDialog(sourceFile, sourceWaypoint) {
 
   const cancel = document.createElement('button');
   cancel.type = 'button';
-  cancel.textContent = 'Annuleren';
+  cancel.textContent = 'Cancel';
 
   const confirm = document.createElement('button');
   confirm.type = 'button';
-  confirm.textContent = 'Kopiëren';
+  confirm.textContent = 'Copy';
   confirm.style.fontWeight = 'bold';
 
   buttons.append(cancel, confirm);
@@ -484,17 +484,17 @@ function showCopyDialog(sourceFile, sourceWaypoint) {
     if (select.value === 'new') {
 
       const defaultName =
-        sourceFile.name.replace(/\.[^.]+$/, '') + '_kopie.gpx';
+        sourceFile.name.replace(/\.[^.]+$/, '') + '_Copy.gpx';
 
       const newName = prompt(
-        'Naam van de nieuwe laag:',
+        'Name of the new layer:',
         defaultName
       );
 
       if (newName === null) return;
 
       if (!newName.trim()) {
-        alert('Geef een naam op voor de nieuwe laag.');
+        alert('Please enter a name for the new layer.');
         return;
       }
 
@@ -511,7 +511,7 @@ function showCopyDialog(sourceFile, sourceWaypoint) {
       const targetFile = files[Number(select.value)];
 
       if (!targetFile || targetFile === sourceFile) {
-        alert('Ongeldige doellaag.');
+        alert('Invalid target layer.');
         return;
       }
 
@@ -552,7 +552,7 @@ function copyWaypointToLayer(sourceFile, sourceWaypoint, targetFile) {
   }
 
   if (sourceFile === targetFile) {
-    alert('Kies een andere laag dan de bronlaag.');
+    alert('Choose a different layer than the source layer.');
     return;
   }
 
@@ -591,7 +591,7 @@ function copyWaypointToNewLayer(sourceFile, sourceWaypoint, newName) {
   renderList();
   save();
 
-  msg('Nieuwe laag aangemaakt: ' + newName);
+  msg('New Layer added: ' + newName);
 }
 
 
