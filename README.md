@@ -2,13 +2,11 @@
 
 A browser-based Leaflet application for viewing, editing and exporting GPX files. You can load multiple GPX files, view waypoints, tracks and routes on the map, edit waypoints in a sidebar and export the supported data as one GPX file.
 
-<<<<<<< HEAD
+![Preview](preview.png)
+
 Most processing takes place locally in the browser. The optional reverse address lookup sends coordinates to the Nominatim service; map tiles and JavaScript libraries are also loaded from external servers.
 
 > **Implementation note:** this README was checked against the available `gpx-map(1).js` source version. Some recently discussed improvements (editing and exporting Garmin Proximity, and exporting route points) are not yet present in that source version. They are identified below rather than described as completed features.
-=======
-Everything runs locally in your browser. No server is needed and your files are not sent anywhere (except for the optional address lookup, see [Address from coordinates](#address-from-coordinates)), and getting the POI from the Overpass API.
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 ## Files
 
@@ -16,40 +14,22 @@ The application consists of an HTML page, a stylesheet and the main JavaScript f
 
 | File | Contents |
 |---|---|
-<<<<<<< HEAD
-| `gpx_leaflet_map.html` | Page structure, map container, panel and editing sidebar |
+| `Index.html` | Page structure, map container, panel and editing sidebar |
 | `gpx-map.css` | Styling for the map, panel, legend and sidebar |
 | `gpx-map.js` | Map layers, GPX parsing, drawing, editing, browser storage and GPX export |
 
 The main JavaScript file also exposes an API (`window.GpxMap`) that can be used by add-on scripts to register additional formats, symbols and waypoint collections.
-=======
-| `index.html` | The page itself: structure, panel and sidebar |
-| `gpx-map.css` | All styling |
-| `gpx-map.js` | All logic: map, loading, editing, exporting |
-| 'kml-import.js'| All logic: importing KML files |
-| 'poi-core.js'| Core file for POI handeling |
-| 'poi-search " | Poi searchin logic |
-
-Put the  files in the same folder and open `index.html` in your browser. Double-clicking (`file://`) works.
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 Keep the files in the arrangement expected by the HTML page. Open the HTML page in a modern browser. An internet connection is required for Leaflet, Leaflet Awesome Markers, Font Awesome, map tiles and the optional Nominatim lookup.
 
 ## Quick start
 
-<<<<<<< HEAD
 1. Open `index.html`.
 2. Select one or more `.gpx` files with the file picker, or drag the files onto the map.
 3. The map zooms to the loaded data.
 4. Click a waypoint to view its popup.
 5. Enable **Edit** to add, move, change or delete waypoints.
 6. Use **Export as 1 GPX** to download the supported data as one GPX file.
-=======
-1. Open `gpx_leaflet_map.html`.
-2. Click **Choose file…** or drag one or morefiles o nto the map.
-3. The map zooms to your data.
-4. Click **✏️ Edit** to change points, or **Export as 1 GPX** to save everything.
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 ## Loading GPX -KML or GPI files
 
@@ -71,7 +51,6 @@ The panel lists the loaded files.
 
 | Element | What it does |
 |---|---|
-<<<<<<< HEAD
 | File picker | Selects one or more supported files |
 | Remember in this browser | Stores loaded data in the browser's `localStorage` |
 | File list | Shows each file's colour, name and counts for waypoints, route points and tracks |
@@ -81,36 +60,12 @@ The panel lists the loaded files.
 | Clear all | Removes all loaded files from the map |
 
 The export and clear buttons are only available when files have been loaded.
-=======
-| **Choose file** | Opens the file picker (multiple files allowed) |
-| **Remember in this browser** (Remember in this browser) | Stores the loaded data in the browser, see [Browser storage](#browser-storage) |
-| **File list** | Per file: colour, name, number of points and lines. Click the name to zoom to that file. Click **×** to remove the file from the map |
-| **Export als 1 GPX** | Merges everything and downloads it, see [Exporting](#exporting) |
-| **Export as GPI** | Downloads the POI as a Garmin GPI file
-| **Clear all** | Removes all files from the map |
-
-The **Export al 1 GPX**, **Export as GPI** and **clear all** buttons only appear once at least one file is loaded.
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 ## Map layers
 
 Use the layers control in the top-left corner of the map. It separates base maps from overlays.
 
-<<<<<<< HEAD
 ### Base maps
-=======
-- **Outdoors (OSM)**: default layer
-- **CycleOSM**: handy for cycling and mountain routes
-- **Humanitarian (HOT)**
-- **TopPlusOpen Color**
-- **Topografisch (OpenTopoMap)**
-- **Satellite** (Esri)
-
-Two overlay maps Waymarked Trails can be used with the basemaps
-
-- **Waymarked Trails - Hiking**
-- **Waymarked Trails - Cycling**
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 - **OpenStreetMap** — standard map and default layer
 - **CycleOSM** — cycling-oriented map
@@ -178,11 +133,7 @@ Symbol matching is case-insensitive. Additional symbols can be registered by an 
 
 ## Edit mode
 
-<<<<<<< HEAD
 Click the **Edit** control on the map to open the editing sidebar. Click it again, or use the close control in the sidebar, to leave edit mode.
-=======
-Click **✏️ Edit** at the top left. The button turns blue and a sidebar slides open on the left. Click the button again (or the **×** in the sidebar) to close edit mode.
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 When edit mode is active, clicking an ordinary waypoint selects it instead of opening its normal popup. The selected waypoint is marked with a yellow ring.
 
@@ -192,7 +143,6 @@ The available fields in the checked source version are:
 
 | Field | Meaning |
 |---|---|
-<<<<<<< HEAD
 | Name | Waypoint name |
 | Description | Waypoint description |
 | Symbol | GPX symbol; suggestions are available |
@@ -206,34 +156,10 @@ The available fields in the checked source version are:
 | Pin color | Own marker colour, or the file colour |
 
 Latitude must be between -90 and 90. Longitude must be between -180 and 180. Changes to the fields are applied when Save is clicked.
-=======
-| Name | Name of the point |
-| Description | Description |
-| Symbol | Determines the icon (with suggestions in a dropdown) |
-| Latitude / Longitude | Position in decimal degrees (comma or dot, for example `46,286468`) |
-| Elevation | Elevation in metres (empty becomes `0`) |
-| Street1 / Street2 | Street and house number (and optionally a second line) |
-| Postalcode, City, Country | Postal code, city, country |
-| Phone, Email | Contact details |
-| Pin colour | A colour of its own for this point, or "colour of the file" |
-
-Changes are only applied when you click **Save**. Latitude must be between -90 and 90 and Longitude between -180 and 180, otherwise an error message appears.
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 **Garmin Proximity status:** the GPX parser can read Proximity and the popup can display it. However, the checked source version does not yet include Proximity in the editable sidebar or write it during GPX export. Add those code changes before documenting Proximity as editable/exportable functionality.
 
-<<<<<<< HEAD
 ### Sidebar actions
-=======
-| Button | What it does |
-|---|---|
-| **➕ New POI** | Then click on the map to place a point. Choose the file in the dropdown next to it. If no file is loaded yet, a new file is created |
-| **Save** | Applies the fields to the point |
-| **🏷️ Address from coordinates** | Fills in the address automatically, see below |
-| **📍 Move on the map** | Then click on the map for the new position |
-| **Delete** | Deletes the point (with confirmation) |
-| **Esc** (key) | Cancels "New point" or "Move" |
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 - **New point:** choose the target file and click the map to place a new waypoint. If no file exists, a new points file is created.
 - **Save:** applies the edited field values to the selected waypoint.
@@ -242,11 +168,7 @@ Changes are only applied when you click **Save**. Latitude must be between -90 a
 - **Delete:** removes the selected waypoint after confirmation.
 - **Esc:** cancels the active new-point or move action.
 
-<<<<<<< HEAD
 A waypoint cannot be moved to another loaded file using the current editing controls.
-=======
-The **🏷️ Address from coordinates** button reads Latitude and Longitude from the sidebar and looks up the address through **Nominatim** (OpenStreetMap):
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 ## Address from coordinates
 
@@ -271,11 +193,7 @@ Important points:
 
 ## Exporting
 
-<<<<<<< HEAD
 The export function combines the supported waypoint and track data into one GPX 1.1 file. The filename used by the checked source version is:
-=======
-The **Export al 1 GPX** button merges all loaded files into one file named `merged_DDMMYYYY.gpx` (with today's date merged).
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 `merged_DDMMYYYY.gpx`
 
@@ -311,11 +229,7 @@ Files removed from the map are not exported. Waypoint changes made in edit mode 
 
 ## Browser storage
 
-<<<<<<< HEAD
 When **Remember in this browser** is enabled, the application stores the loaded data in `localStorage`.
-=======
-With **Remember in this browser**, the page stores the loaded data in your browser's `localStorage`, so it is still there after closing the page.
->>>>>>> a7a256361879b045569512f6d67969565321d18f
 
 The stored data includes:
 
