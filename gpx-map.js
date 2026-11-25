@@ -112,6 +112,17 @@ const COLORS = ['#d93025', '#1a73e8', '#188038', '#e37400', '#9334e6', '#00838f'
 const KEY = 'gpxMapFiles';
 let files = [];            // [{name, color, wpts:[], lines:[[[lat,lon],...]], group}]
 const changeHooks = [];    // functions from plugins, called whenever the file list changes
+const waypointAddHooks = [];
+
+function notifyWaypointsAdded(wpts, source) {
+  waypointAddHooks.forEach(fn => {
+    try {
+      fn(wpts, source);
+    } catch (e) {
+      console.error('Waypoint color add-on:', e);
+    }
+  });
+}
 
 const $ = id => document.getElementById(id);
 const msg = t => { $('msg').textContent = t || ''; };
@@ -133,11 +144,11 @@ SYMBOLS.forEach(([n, i]) => { SYMBOL_ICON[n.toLowerCase()] = i; });
 function iconName(sym) { return SYMBOL_ICON[String(sym || '').trim().toLowerCase()] || DEFAULT_ICON; }
 // Kleuren die de plug-in kent: [waarde, label in de zijbalk]
 const PIN_COLORS = [
-  ['red', 'Rood'], ['darkred', 'Donkerrood'], ['lightred', 'Lichtrood'], ['orange', 'Oranje'], ['beige', 'Beige'],
-  ['green', 'Groen'], ['darkgreen', 'Donkergroen'], ['lightgreen', 'Lichtgroen'],
-  ['blue', 'Blauw'], ['darkblue', 'Donkerblauw'], ['lightblue', 'Lichtblauw'], ['cadetblue', 'Staalblauw'],
-  ['purple', 'Paars'], ['darkpurple', 'Donkerpaars'], ['pink', 'Roze'],
-  ['white', 'Wit'], ['lightgray', 'Lichtgrijs'], ['gray', 'Grijs'], ['black', 'Zwart']
+  ['red', 'Red'], ['darkred', 'Darkred'], ['lightred', 'Lightred'], ['orange', 'Orange'], ['beige', 'Beige'],
+  ['green', 'Green'], ['darkgreen', 'Darkgreen'], ['lightgreen', 'Lightgreen'],
+  ['blue', 'Blue'], ['darkblue', 'Darkblue'], ['lightblue', 'Lightblue'], ['cadetblue', 'Cadetblue'],
+  ['purple', 'Purple'], ['darkpurple', 'Darkpurple'], ['pink', 'Pink'],
+  ['white', 'White'], ['lightgray', 'Lightgray'], ['gray', 'Gray'], ['black', 'Black']
 ];
 function markerColor(f, w) {
   if (w && w.color && PIN_COLORS.some(c => c[0] === w.color)) return w.color;   // eigen kleur van het punt
@@ -769,6 +780,8 @@ function addWaypointFile(name, wpts, lines) {
     group: null
   };
 
+  notifyWaypointsAdded(f.wpts, 'plugin');
+  
   files.push(f);
   draw(f);
   renderList();
@@ -788,8 +801,26 @@ function removeFile(f) {
 }
 
 window.GpxMap = {
-  registerFormat, makeWpt, registerSymbol, addWaypointFile, removeFile,
-  getFiles: () => files, map: map, onChange: fn => { changeHooks.push(fn); }
+  registerFormat,
+  makeWpt,
+  registerSymbol,
+  addWaypointFile,
+  removeFile,
+
+  getFiles: () => files,
+  map: map,
+
+  onChange: fn => {
+    changeHooks.push(fn);
+  },
+
+  // Hook voor het onderscheppen van nieuw toegevoegde waypoints
+  onWaypointsAdded: fn => {
+    waypointAddHooks.push(fn);
+  },
+
+  // Beschikbare markerkleuren ophalen
+  getPinColors: () => PIN_COLORS.map(c => c[0])
 };
 
 function addFile(name, text) {
@@ -807,6 +838,9 @@ function addFile(name, text) {
     routes,
     group: null
   };
+
+  // Geef de ingelezen waypoints door aan de kleurmodule
+  notifyWaypointsAdded(wpts, 'gpx');
 
   files.push(f);
   draw(f);
@@ -914,8 +948,6 @@ function buildGpx() {
   // Hierna volgen de bestaande WAYPOINTS, ROUTES
   // en TRACKS
   // --------------------------------------------------
-
-
 
  // ==================================================
  // 1. WAYPOINTS
